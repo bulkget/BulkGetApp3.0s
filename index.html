@@ -1,182 +1,287 @@
-<meta content='width=device-width, initial-scale=1.0, user-scalable=1.0, minimum-scale=1.0, maximum-scale=5.0' name='viewport'/>
+<meta content="width=device-width, initial-scale=1.0, user-scalable=1.0, minimum-scale=1.0, maximum-scale=5.0" name="viewport"/>
 
 <style>
-  html, body { margin: 0; padding: 0; }
-  
-  body.locked { overflow: hidden !important; height: 100vh; position: fixed; width: 100%; }
-  body:not(.locked) { overflow: auto; height: auto; position: static; width: auto; }
+  :root{
+    --primary-1:#8e2de2;   /* ม่วง */
+    --primary-2:#4a00e0;   /* ม่วงน้ำเงิน */
+    --bg:#0b0714;
+    --fg:#eef0ff;
+    --muted:#b9b9c9;
+    --danger:#ff6b7a;
+    --success:#87e887;
+    --glass: rgba(255,255,255,.08);
+    --glass-border: rgba(255,255,255,.25);
+  }
 
-  #screen-lock {
-    position: fixed; inset: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,.3); backdrop-filter: blur(5px);
-    z-index: 9999; display: flex; align-items: center; justify-content: center;
-    overflow: hidden; touch-action: none;
-  }
-  #lock-box {
-    text-align: center; background: #fff; padding: 30px; border-radius: 16px;
-    box-shadow: 0 0 20px rgba(0,0,0,.2); font-family: 'Arial', sans-serif;
-    width: 90%; max-width: 400px;
-  }
-  .logo-container { display: flex; flex-direction: column; align-items: center; margin-bottom: 16px; }
-  .logo-container img { width: 80px; height: 80px; border-radius: 12px; }
-  .app-name { margin-top: 8px; font-size: 26px; font-weight: bold; color: #333; }
-  #lock-box h2 { font-size: 16px; font-weight: normal; margin-bottom: 14px; color: #222; }
+  /* พื้นหลังรวม */
+  html, body { margin:0; padding:0; height:100%; background: var(--bg); color: var(--fg); font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial; }
+  body.locked { overflow:hidden !important; height:100vh; position:fixed; width:100%; }
+  body:not(.locked){ overflow:auto; position:static; }
 
-  #msg {
-    display: none; margin: 0 0 14px; padding: 10px 12px; border-radius: 12px;
-    font-size: 14px; line-height: 1.35;
+  /* Overlay + ฉากหลัง */
+  #screen-lock{
+    position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:9999;
+    background: radial-gradient(1200px 800px at 80% -10%, rgba(142,45,226,.25), transparent 60%),
+                radial-gradient(1000px 600px at 0% 100%, rgba(74,0,224,.25), transparent 60%),
+                linear-gradient(180deg, #201535 0%, #0b0714 100%);
+    overflow:hidden;
   }
-  #msg.error { display: block; background: rgba(255, 77, 79, .12); border: 1px solid rgba(255, 77, 79, .35); color: #b00020; }
-  #msg.success { display: block; background: rgba(82, 196, 26, .12); border: 1px solid rgba(82, 196, 26, .35); color: #1a7f37; }
+  /* ฉากภูเขาแบบ SVG */
+  .scene{
+    position:absolute; inset:0; pointer-events:none;
+    background: linear-gradient(180deg, #dff7e9 0%, #c9e2ff 20%, #b7b8ff 40%, #9789ff 60%, #4c3fa7 100%);
+    filter: saturate(105%) contrast(105%);
+  }
+  .scene svg{ position:absolute; inset:0; width:100%; height:100%; display:block; }
 
-  @keyframes shakeX { 10%,90%{transform:translateX(-1px);} 20%,80%{transform:translateX(2px);} 30%,50%,70%{transform:translateX(-4px);} 40%,60%{transform:translateX(4px);} }
-  #lock-box.shake { animation: shakeX .35s ease; }
+  /* กล่องล็อกแบบ glass */
+  #lock-box{
+    position:relative; width:min(92vw, 520px);
+    border-radius:24px; padding:28px 26px 24px;
+    background: var(--glass); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    border:1px solid var(--glass-border);
+    box-shadow: 0 20px 60px rgba(0,0,0,.45);
+  }
+  #lock-box::before{
+    content:""; position:absolute; inset:0; border-radius:inherit; padding:1px;
+    background:linear-gradient(120deg, rgba(255,255,255,.35), rgba(255,255,255,.05), rgba(255,255,255,.35));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude; pointer-events:none;
+  }
 
-  #access-input, #duration-select {
-    padding: 12px 16px; font-size: 16px; border-radius: 20px; border: 1px solid #ccc;
-    width: 250px; margin-bottom: 10px; outline: none; box-shadow: none;
+  .logo-wrap{ display:flex; flex-direction:column; align-items:center; gap:10px; margin-bottom:14px; }
+  .logo-wrap img{ width:80px; height:80px; border-radius:18px; box-shadow:0 8px 18px rgba(0,0,0,.35); }
+  .app-name{ font-weight:800; font-size:26px; letter-spacing:.3px; background:linear-gradient(90deg, var(--primary-1), var(--primary-2)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+
+  .title{ text-align:center; font-size:22px; font-weight:700; margin:6px 0 16px; }
+  .sub{ text-align:center; font-size:13px; color:var(--muted); margin:-6px 0 18px; }
+
+  /* alert */
+  #msg{ display:none; margin:0 0 12px; padding:10px 12px; border-radius:12px; font-size:14px; border:1px solid transparent; }
+  #msg.error{ display:block; background:rgba(255, 107, 122,.12); border-color:rgba(255,107,122,.35); color:#ffc2c8; }
+  #msg.success{ display:block; background:rgba(135, 232, 135,.12); border-color:rgba(135,232,135,.35); color:#c8f5c8; }
+
+  @keyframes shakeX{ 10%,90%{transform:translateX(-1px)} 20%,80%{transform:translateX(2px)} 30%,50%,70%{transform:translateX(-4px)} 40%,60%{transform:translateX(4px)} }
+  #lock-box.shake{ animation: shakeX .35s ease; }
+
+  /* กลุ่มฟิลด์แบบ pill */
+  .field{ display:flex; align-items:center; gap:10px; margin-bottom:12px;
+    background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18);
+    border-radius:999px; padding:10px 14px; }
+  .field:focus-within{ border-color: rgba(255,255,255,.45); box-shadow: 0 0 0 4px rgba(142,45,226,.18); }
+  .icon{ width:20px; text-align:center; opacity:.9; }
+  select, input{ flex:1; background:transparent; border:0; outline:0; color:var(--fg); font-size:15px; padding:6px 2px; }
+  select{ cursor:pointer; }
+
+  .hint{ font-size:12px; color:var(--muted); margin:0 8px 8px; }
+
+  /* ปุ่ม */
+  #unlock-btn{
+    width:100%; padding:12px 16px; margin-top:6px;
+    font-size:16px; font-weight:700; letter-spacing:.2px;
+    color:#1a132f; background:#fff; border:0; border-radius:999px;
+    cursor:pointer; transition: transform .06s ease, box-shadow .2s ease, opacity .2s ease;
+    box-shadow: 0 12px 28px rgba(0,0,0,.35);
   }
-  #unlock-btn {
-    padding: 12px 20px; font-size: 16px;
-    background: linear-gradient(to right, #8e2de2, #4a00e0);
-    color: #fff; border: none; border-radius: 20px; cursor: pointer; outline: none;
+  #unlock-btn:hover{ transform: translateY(-1px); box-shadow:0 16px 34px rgba(0,0,0,.45); }
+  #unlock-btn:active{ transform: translateY(0); }
+  #unlock-btn[disabled]{ opacity:.7; cursor:not-allowed; }
+
+  .btn-loading{ position:relative; color:transparent !important; }
+  .btn-loading::after{
+    content:""; position:absolute; inset:0; margin:auto; width:18px; height:18px;
+    border:2px solid rgba(0,0,0,.2); border-top-color:#1a132f; border-radius:50%; animation: spin .8s linear infinite;
   }
-  #unlock-btn:hover { opacity: .9; }
-  #countdown-timer { font-size: 12px; margin-top: 10px; }
-  .popup-img { display: block; max-width: 100%; width: 100%; height: auto; max-height: 60vh; object-fit: contain; margin: 10px 0 0; border-radius: 12px; }
-  @media (max-width: 430px) { #lock-box { padding: 20px; } .popup-img { max-height: 65vh; } }
+  @keyframes spin{ to{ transform: rotate(360deg); } }
+
+  #countdown-timer{ text-align:center; font-size:12px; margin-top:12px; color:#e0def7; }
+
+  /* มุมโค้งใหญ่ของกล่องฉากหลัง (ตามภาพ) */
+  .scene-mask{
+    position:absolute; inset:4% 6%; border-radius:28px; overflow:hidden; box-shadow: inset 0 0 0 1px rgba(255,255,255,.18);
+    pointer-events:none;
+  }
+  @media (max-width:520px){
+    #lock-box{ width:min(92vw, 520px); padding:22px 18px; border-radius:20px; }
+    .scene-mask{ inset:3% 3%; border-radius:18px; }
+  }
 </style>
 
 <div id="screen-lock">
-  <div id="lock-box">
-    <div class="logo-container">
+  <!-- ฉากหลัง -->
+  <div class="scene"></div>
+  <div class="scene-mask"></div>
+  <!-- SVG ภูเขา -->
+  <svg viewBox="0 0 1440 900" preserveAspectRatio="none">
+    <defs>
+      <linearGradient id="fog" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="rgba(255,255,255,0.6)"/>
+        <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+      </linearGradient>
+    </defs>
+    <!-- ชั้นภูเขาไกล -->
+    <path d="M0,520 L200,420 L380,470 L520,400 L740,500 L980,380 L1200,460 L1440,390 L1440,900 L0,900 Z"
+          fill="#6b63d9" opacity="0.45"></path>
+    <!-- ชั้นกลาง -->
+    <path d="M0,600 L180,520 L360,560 L520,520 L660,600 L880,520 L1100,600 L1300,560 L1440,600 L1440,900 L0,900 Z"
+          fill="#4f46c8" opacity="0.65"></path>
+    <!-- ชั้นหน้า -->
+    <path d="M0,700 L160,660 L340,690 L520,650 L700,710 L880,660 L1060,720 L1240,680 L1440,720 L1440,900 L0,900 Z"
+          fill="#221a56" opacity="0.9"></path>
+    <!-- แนวต้นไม้ -->
+    <path d="M0,760 C200,740 300,800 480,780 C700,760 860,820 1100,790 C1240,770 1340,800 1440,800 L1440,900 L0,900 Z"
+          fill="#0e0a2a"></path>
+  </svg>
+
+  <!-- กล่องปลดล็อก -->
+  <div id="lock-box" role="dialog" aria-modal="true" aria-labelledby="title">
+    <div class="logo-wrap">
       <a href="https://www.tiktok.com/@bulkget?_t=ZS-8ylDYiavxkD&_r=1" target="_blank" rel="noopener">
-        <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjSdH_YVzywJuFBmnLIbnHMtE2TX1A1jXiVEgcFqKQfRCSCqo8d3OXSKRFAiQPovYVRr2WS9wtuyDcqmlQ3qrduWCNU6zmfdA4Qp0HtGq-cTN9VA59U-SDNWVCkkRQdRYyqqIfUkrTmhS5G_yJx8R57uXD_A1AHWQ0w3Gk-0Qi3zhRiRuAT61Z7UoY0eQ/s320/20241010_225330.png" alt="App Logo" />
+        <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjSdH_YVzywJuFBmnLIbnHMtE2TX1A1jXiVEgcFqKQfRCSCqo8d3OXSKRFAiQPovYVRr2WS9wtuyDcqmlQ3qrduWCNU6zmfdA4Qp0HtGq-cTN9VA59U-SDNWVCkkRQdRYyqqIfUkrTmhS5G_yJx8R57uXD_A1AHWQ0w3Gk-0Qi3zhRiRuAT61Z7UoY0eQ/s320/20241010_225330.png" alt="App Logo"/>
       </a>
       <div class="app-name">BulkGet App</div>
     </div>
 
-    <h2>Please enter the access code</h2>
     <div id="msg"></div>
+    <div class="title" id="title">Login</div>
+    <div class="sub">Enter your access code to continue</div>
 
-    <select id="duration-select">
-      <option value="minute" />1 minute
-      <option value="day" />1 day (Free code : )
-      <option value="7days" />7 days
-      <option value="30days" />30 days
-    </select><br/>
+    <div class="field">
+      <div class="icon">⏱️</div>
+      <select id="duration-select" aria-label="Access duration">
+        <option value="minute">1 minute</option>
+        <option value="day">1 day (Free code : )</option>
+        <option value="7days">7 days</option>
+        <option value="30days">30 days</option>
+      </select>
+    </div>
+    <div class="hint">Choose your access duration</div>
 
-    <input type="text" id="access-input" placeholder="Enter access code" />
-    <button id="unlock-btn">Continue</button>
+    <div class="field">
+      <div class="icon">🔒</div>
+      <input id="access-input" type="text" placeholder="Access code" autocomplete="one-time-code" inputmode="text"/>
+    </div>
+
+    <button id="unlock-btn">Login</button>
     <div id="countdown-timer"></div>
-
-
   </div>
 </div>
 
 <script>
-  function lockScreen() {
+  function lockScreen(){
     document.body.classList.add('locked');
-    document.getElementById('screen-lock').style.display = 'flex';
+    document.getElementById('screen-lock').style.display='flex';
   }
-  function unlockScreen() {
+  function unlockScreen(){
     document.body.classList.remove('locked');
-    document.getElementById('screen-lock').style.display = 'none';
-    document.body.style.overflow = '';
-    document.documentElement.style.overflow = '';
+    document.getElementById('screen-lock').style.display='none';
+    document.body.style.backgroundColor = "#000"; /* คงพื้นหลังมืด */
   }
   lockScreen();
 
-  function getExpirationTime(type, value) {
+  function getExpirationTime(type, value){
     const now = new Date();
-    if (type === "minute") now.setMinutes(now.getMinutes() + value);
-    else if (type === "day") now.setDate(now.getDate() + value);
+    if(type==="minute") now.setMinutes(now.getMinutes()+value);
+    else if(type==="day") now.setDate(now.getDate()+value);
     return now.getTime();
   }
   const durationMap = {
-    minute: { type: "minute", value: 1 },
-    day: { type: "day", value: 1 },
-    "7days": { type: "day", value: 7 },
-    "30days": { type: "day", value: 30 }
+    minute:{type:"minute", value:1},
+    day:{type:"day", value:1},
+    "7days":{type:"day", value:7},
+    "30days":{type:"day", value:30}
   };
+
   let countdownInterval;
-  function startCountdown(expirationTime) {
+  function startCountdown(expire){
     clearInterval(countdownInterval);
-    const countdownElement = document.getElementById("countdown-timer");
-    countdownInterval = setInterval(function () {
-      const now = Date.now();
-      const distance = expirationTime - now;
-      const hours = Math.floor((distance % (1000*60*60*24)) / (1000*60*60));
-      const minutes = Math.floor((distance % (1000*60*60)) / (1000*60));
-      const seconds = Math.floor((distance % (1000*60)) / 1000);
-      countdownElement.textContent = `Time remaining: ${hours}h ${minutes}m ${seconds}s`;
-      if (distance < 0) {
+    const el = document.getElementById("countdown-timer");
+    countdownInterval = setInterval(()=>{
+      const now = Date.now(), d = expire - now;
+      const days = Math.floor(d/(1000*60*60*24));
+      const h = Math.floor((d%(1000*60*60*24))/(1000*60*60));
+      const m = Math.floor((d%(1000*60*60))/(1000*60));
+      const s = Math.floor((d%(1000*60))/1000);
+      el.textContent = d>0 ? `Time remaining: ${days?days+"d ":""}${h}h ${m}m ${s}s` : "Expired! Please re-enter the code.";
+      if(d<0){
         clearInterval(countdownInterval);
-        countdownElement.textContent = "Expired! Please re-enter the code.";
         lockScreen();
         localStorage.removeItem("access_granted");
         localStorage.removeItem("expiration_time");
       }
-    }, 1000);
-  }
-  const savedAccess = localStorage.getItem("access_granted");
-  const savedExpire = localStorage.getItem("expiration_time");
-  if (savedAccess && savedExpire) {
-    const expirationTime = parseInt(savedExpire, 10);
-    if (Date.now() < expirationTime) {
-      unlockScreen();
-      window.scrollTo(0, 0);
-      startCountdown(expirationTime);
-      window.AppInventor?.setWebViewString("unlocked");
-    } else {
-      localStorage.removeItem("access_granted");
-      localStorage.removeItem("expiration_time");
-    }
+    },1000);
   }
 
-  function showMsg(type, text) {
+  // restore
+  (function(){
+    const ok = localStorage.getItem("access_granted");
+    const exp = localStorage.getItem("expiration_time");
+    if(ok && exp){
+      const t = parseInt(exp,10);
+      if(Date.now() < t){
+        unlockScreen();
+        window.scrollTo(0,0);
+        startCountdown(t);
+        window.AppInventor?.setWebViewString("unlocked");
+      }else{
+        localStorage.removeItem("access_granted");
+        localStorage.removeItem("expiration_time");
+      }
+    }
+  })();
+
+  function showMsg(type, text){
     const el = document.getElementById('msg');
-    el.className = '';
-    el.textContent = text || '';
-    if (!text) { el.style.display = 'none'; return; }
-    el.classList.add(type === 'success' ? 'success' : 'error');
+    el.className=''; el.textContent=text||'';
+    if(!text){ el.style.display='none'; return; }
+    el.style.display='block';
+    el.classList.add(type==='success'?'success':'error');
     const box = document.getElementById('lock-box');
-    box.classList.remove('shake');
-    void box.offsetWidth;
-    box.classList.add('shake');
+    box.classList.remove('shake'); void box.offsetWidth; box.classList.add('shake');
   }
 
-  document.getElementById("unlock-btn").addEventListener("click", function () {
-    const inputEl = document.getElementById("access-input");
-    const inputCode = inputEl.value.trim();
+  function setLoading(state){
+    const btn = document.getElementById("unlock-btn");
+    btn.disabled = state;
+    btn.classList.toggle('btn-loading', state);
+  }
+
+  async function doUnlock(){
+    const input = document.getElementById("access-input");
+    const code = input.value.trim();
     const selected = document.getElementById("duration-select").value;
-    if (!inputCode) {
-      showMsg('error', 'Please enter your access code.');
-      inputEl.focus();
-      return;
+    if(!code){ showMsg('error','Please enter your access code.'); input.focus(); return; }
+
+    const url = "https://script.google.com/macros/s/AKfycbxpgnHFx25XGdA-8yfP_17e_GqcremB5qqBlWaJ0yIUxQb4mc6o01TYPFS8TKt8nWQ/exec?code="
+      + encodeURIComponent(code) + "&type=" + encodeURIComponent(selected);
+
+    showMsg('',''); setLoading(true);
+    try{
+      const r = await fetch(url);
+      const result = await r.text();
+      if(result === "valid"){
+        const expire = getExpirationTime(durationMap[selected].type, durationMap[selected].value);
+        localStorage.setItem("access_granted","true");
+        localStorage.setItem("expiration_time", String(expire));
+        unlockScreen();
+        window.scrollTo(0,0);
+        startCountdown(expire);
+        window.AppInventor?.setWebViewString("unlocked");
+        showMsg('success','Unlocked successfully.');
+      }else{
+        showMsg('error','Invalid access code.');
+        input.focus();
+      }
+    }catch(e){
+      console.error(e);
+      showMsg('error','Error connecting to server. Please try again.');
+    }finally{
+      setLoading(false);
     }
-    const url = "https://script.google.com/macros/s/AKfycbxpgnHFx25XGdA-8yfP_17e_GqcremB5qqBlWaJ0yIUxQb4mc6o01TYPFS8TKt8nWQ/exec?code=" 
-      + encodeURIComponent(inputCode) + "&type=" + encodeURIComponent(selected);
-    showMsg('', '');
-    fetch(url)
-      .then(r => r.text())
-      .then(result => {
-        if (result === "valid") {
-          const expirationTime = getExpirationTime(durationMap[selected].type, durationMap[selected].value);
-          localStorage.setItem("access_granted", "true");
-          localStorage.setItem("expiration_time", String(expirationTime));
-          unlockScreen();
-          window.scrollTo(0, 0);
-          startCountdown(expirationTime);
-          window.AppInventor?.setWebViewString("unlocked");
-        } else {
-          showMsg('error', 'Invalid access code.');
-          document.getElementById("access-input").focus();
-        }
-      })
-      .catch(err => {
-        showMsg('error', 'Error connecting to server. Please try again.');
-        console.error(err);
-      });
+  }
+
+  document.getElementById("unlock-btn").addEventListener("click", doUnlock);
+  document.getElementById("access-input").addEventListener("keydown", e=>{
+    if(e.key==="Enter"){ e.preventDefault(); doUnlock(); }
   });
 </script>
