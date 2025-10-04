@@ -1,109 +1,83 @@
 <meta content="width=device-width, initial-scale=1.0, user-scalable=1.0, minimum-scale=1.0, maximum-scale=5.0" name="viewport"/>
-
 <style>
-  :root{
-    --primary-1:#8e2de2;   /* ม่วง */
-    --primary-2:#4a00e0;   /* ม่วงน้ำเงิน */
-    --bg:#0b0714;
-    --fg:#eef0ff;
-    --muted:#b9b9c9;
-    --danger:#ff6b7a;
-    --success:#87e887;
-    --glass: rgba(255,255,255,.08);
-    --glass-border: rgba(255,255,255,.25);
-  }
-
-  /* พื้นหลังรวม */
-  html, body { margin:0; padding:0; height:100%; background: var(--bg); color: var(--fg); font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial; }
-  body.locked { overflow:hidden !important; height:100vh; position:fixed; width:100%; }
-  body:not(.locked){ overflow:auto; position:static; }
-
-  /* Overlay + ฉากหลัง */
-  #screen-lock{
-    position:fixed; inset:0; display:flex; align-items:center; justify-content:center; z-index:9999;
-    background: radial-gradient(1200px 800px at 80% -10%, rgba(142,45,226,.25), transparent 60%),
-                radial-gradient(1000px 600px at 0% 100%, rgba(74,0,224,.25), transparent 60%),
-                linear-gradient(180deg, #201535 0%, #0b0714 100%);
+  body {
+    margin:0; padding:0;
+    background:#000; /* พื้นหลังดำ */
+    font-family: 'Inter', Arial, sans-serif;
+    color:#fff;
+    height:100vh; 
     overflow:hidden;
   }
-  /* ฉากภูเขาแบบ SVG */
-  .scene{
-    position:absolute; inset:0; pointer-events:none;
-    background: linear-gradient(180deg, #dff7e9 0%, #c9e2ff 20%, #b7b8ff 40%, #9789ff 60%, #4c3fa7 100%);
-    filter: saturate(105%) contrast(105%);
-  }
-  .scene svg{ position:absolute; inset:0; width:100%; height:100%; display:block; }
+  body.locked { overflow:hidden; }
 
-  /* กล่องล็อกแบบ glass */
-  #lock-box{
-    position:relative; width:min(92vw, 520px);
-    border-radius:24px; padding:28px 26px 24px;
-    background: var(--glass); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-    border:1px solid var(--glass-border);
-    box-shadow: 0 20px 60px rgba(0,0,0,.45);
-  }
-  #lock-box::before{
-    content:""; position:absolute; inset:0; border-radius:inherit; padding:1px;
-    background:linear-gradient(120deg, rgba(255,255,255,.35), rgba(255,255,255,.05), rgba(255,255,255,.35));
-    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-    -webkit-mask-composite: xor; mask-composite: exclude; pointer-events:none;
+  #screen-lock {
+    position:fixed; inset:0;
+    display:flex; 
+    align-items:center; /* จัดแนวตั้ง */
+    justify-content:center; /* จัดแนวนอน */
+    min-height:100vh; /* ให้เต็มจอ */
+    background:#000; 
+    z-index:9999;
   }
 
-  .logo-wrap{ display:flex; flex-direction:column; align-items:center; gap:10px; margin-bottom:14px; }
-  .logo-wrap img{ width:80px; height:80px; border-radius:18px; box-shadow:0 8px 18px rgba(0,0,0,.35); }
-  .app-name{ font-weight:800; font-size:26px; letter-spacing:.3px; background:linear-gradient(90deg, var(--primary-1), var(--primary-2)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  #lock-box {
+    width:90%; 
+    max-width:420px;  /* ไม่ให้กว้างเกินไป */
+    padding:28px 24px;
+    border-radius:20px;
 
-  .title{ text-align:center; font-size:22px; font-weight:700; margin:6px 0 16px; }
-  .sub{ text-align:center; font-size:13px; color:var(--muted); margin:-6px 0 18px; }
+    /* glass ขาวโปร่ง */
+    background: rgba(255,255,255,0.12);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
 
-  /* alert */
-  #msg{ display:none; margin:0 0 12px; padding:10px 12px; border-radius:12px; font-size:14px; border:1px solid transparent; }
-  #msg.error{ display:block; background:rgba(255, 107, 122,.12); border-color:rgba(255,107,122,.35); color:#ffc2c8; }
-  #msg.success{ display:block; background:rgba(135, 232, 135,.12); border-color:rgba(135,232,135,.35); color:#c8f5c8; }
+    border: 1px solid rgba(255,255,255,0.25);
+    box-shadow: 0 12px 32px rgba(0,0,0,0.6);
 
-  @keyframes shakeX{ 10%,90%{transform:translateX(-1px)} 20%,80%{transform:translateX(2px)} 30%,50%,70%{transform:translateX(-4px)} 40%,60%{transform:translateX(4px)} }
-  #lock-box.shake{ animation: shakeX .35s ease; }
-
-  /* กลุ่มฟิลด์แบบ pill */
-  .field{ display:flex; align-items:center; gap:10px; margin-bottom:12px;
-    background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18);
-    border-radius:999px; padding:10px 14px; }
-  .field:focus-within{ border-color: rgba(255,255,255,.45); box-shadow: 0 0 0 4px rgba(142,45,226,.18); }
-  .icon{ width:20px; text-align:center; opacity:.9; }
-  select, input{ flex:1; background:transparent; border:0; outline:0; color:var(--fg); font-size:15px; padding:6px 2px; }
-  select{ cursor:pointer; }
-
-  .hint{ font-size:12px; color:var(--muted); margin:0 8px 8px; }
-
-  /* ปุ่ม */
-  #unlock-btn{
-    width:100%; padding:12px 16px; margin-top:6px;
-    font-size:16px; font-weight:700; letter-spacing:.2px;
-    color:#1a132f; background:#fff; border:0; border-radius:999px;
-    cursor:pointer; transition: transform .06s ease, box-shadow .2s ease, opacity .2s ease;
-    box-shadow: 0 12px 28px rgba(0,0,0,.35);
+    color:#fff;
+    text-align:center;
   }
-  #unlock-btn:hover{ transform: translateY(-1px); box-shadow:0 16px 34px rgba(0,0,0,.45); }
-  #unlock-btn:active{ transform: translateY(0); }
-  #unlock-btn[disabled]{ opacity:.7; cursor:not-allowed; }
 
-  .btn-loading{ position:relative; color:transparent !important; }
-  .btn-loading::after{
-    content:""; position:absolute; inset:0; margin:auto; width:18px; height:18px;
-    border:2px solid rgba(0,0,0,.2); border-top-color:#1a132f; border-radius:50%; animation: spin .8s linear infinite;
+  #lock-box h2 {
+    margin:0 0 18px;
+    font-size:22px;
+    font-weight:700;
   }
-  @keyframes spin{ to{ transform: rotate(360deg); } }
 
-  #countdown-timer{ text-align:center; font-size:12px; margin-top:12px; color:#e0def7; }
-
-  /* มุมโค้งใหญ่ของกล่องฉากหลัง (ตามภาพ) */
-  .scene-mask{
-    position:absolute; inset:4% 6%; border-radius:28px; overflow:hidden; box-shadow: inset 0 0 0 1px rgba(255,255,255,.18);
-    pointer-events:none;
+  .field {
+    display:flex;
+    align-items:center;
+    margin-bottom:14px;
+    border-radius:999px;
+    padding:10px 14px;
+    background:rgba(255,255,255,0.2);
+    border:1px solid rgba(255,255,255,0.3);
   }
-  @media (max-width:520px){
-    #lock-box{ width:min(92vw, 520px); padding:22px 18px; border-radius:20px; }
-    .scene-mask{ inset:3% 3%; border-radius:18px; }
+
+  .field input, .field select {
+    flex:1;
+    background:transparent;
+    border:0;
+    outline:0;
+    color:#fff;
+    font-size:15px;
+  }
+
+  #unlock-btn {
+    width:100%;
+    margin-top:12px;
+    padding:12px 18px;
+    border-radius:999px;
+    border:0;
+    font-size:16px;
+    font-weight:600;
+    background:linear-gradient(90deg,#8e2de2,#4a00e0);
+    color:#fff;
+    cursor:pointer;
+    transition:.2s;
+  }
+  #unlock-btn:hover {
+    opacity:.9;
   }
 </style>
 
