@@ -1,0 +1,180 @@
+<style>
+  html, body { margin: 0; padding: 0; }
+  body { zoom: 0.8; }
+  body.locked { overflow: hidden !important; height: 100vh; position: fixed; width: 100%; }
+  body:not(.locked) { overflow: auto; height: auto; position: static; width: auto; }
+
+  #screen-lock {
+    position: fixed; inset: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,.3); backdrop-filter: blur(5px);
+    z-index: 9999; display: flex; align-items: center; justify-content: center;
+    overflow: hidden; touch-action: none;
+  }
+  #lock-box {
+    text-align: center; background: #fff; padding: 30px; border-radius: 16px;
+    box-shadow: 0 0 20px rgba(0,0,0,.2); font-family: 'Arial', sans-serif;
+    width: 90%; max-width: 400px;
+  }
+  .logo-container { display: flex; flex-direction: column; align-items: center; margin-bottom: 16px; }
+  .logo-container img { width: 80px; height: 80px; border-radius: 12px; }
+  .app-name { margin-top: 8px; font-size: 26px; font-weight: bold; color: #333; }
+  #lock-box h2 { font-size: 16px; font-weight: normal; margin-bottom: 14px; color: #222; }
+
+  #msg {
+    display: none; margin: 0 0 14px; padding: 10px 12px; border-radius: 12px;
+    font-size: 14px; line-height: 1.35;
+  }
+  #msg.error { display: block; background: rgba(255, 77, 79, .12); border: 1px solid rgba(255, 77, 79, .35); color: #b00020; }
+  #msg.success { display: block; background: rgba(82, 196, 26, .12); border: 1px solid rgba(82, 196, 26, .35); color: #1a7f37; }
+
+  @keyframes shakeX { 10%,90%{transform:translateX(-1px);} 20%,80%{transform:translateX(2px);} 30%,50%,70%{transform:translateX(-4px);} 40%,60%{transform:translateX(4px);} }
+  #lock-box.shake { animation: shakeX .35s ease; }
+
+  #access-input, #duration-select {
+    padding: 12px 16px; font-size: 16px; border-radius: 20px; border: 1px solid #ccc;
+    width: 250px; margin-bottom: 10px; outline: none; box-shadow: none;
+  }
+  #unlock-btn {
+    padding: 12px 20px; font-size: 16px;
+    background: linear-gradient(to right, #8e2de2, #4a00e0);
+    color: #fff; border: none; border-radius: 20px; cursor: pointer; outline: none;
+  }
+  #unlock-btn:hover { opacity: .9; }
+  #countdown-timer { font-size: 12px; margin-top: 10px; }
+  .popup-img { display: block; max-width: 100%; width: 100%; height: auto; max-height: 60vh; object-fit: contain; margin: 10px 0 0; border-radius: 12px; }
+  @media (max-width: 430px) { #lock-box { padding: 20px; } .popup-img { max-height: 65vh; } }
+</style>
+
+<div id="screen-lock">
+  <div id="lock-box">
+    <div class="logo-container">
+      <a href="https://www.tiktok.com/@bulkget?_t=ZS-8ylDYiavxkD&_r=1" target="_blank" rel="noopener">
+        <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEjSdH_YVzywJuFBmnLIbnHMtE2TX1A1jXiVEgcFqKQfRCSCqo8d3OXSKRFAiQPovYVRr2WS9wtuyDcqmlQ3qrduWCNU6zmfdA4Qp0HtGq-cTN9VA59U-SDNWVCkkRQdRYyqqIfUkrTmhS5G_yJx8R57uXD_A1AHWQ0w3Gk-0Qi3zhRiRuAT61Z7UoY0eQ/s320/20241010_225330.png" alt="App Logo" />
+      </a>
+      <div class="app-name">BulkGet App</div>
+    </div>
+
+    <h2>Please enter the access code</h2>
+    <div id="msg"></div>
+
+    <select id="duration-select">
+      <option value="minute" />1 minute
+      <option value="day" />1 day (Free code : )
+      <option value="7days" />7 days
+      <option value="30days" />30 days
+    </select><br/>
+
+    <input type="text" id="access-input" placeholder="Enter access code" />
+    <button id="unlock-btn">Continue</button>
+    <div id="countdown-timer"></div>
+
+
+  </div>
+</div>
+
+<script>
+  function lockScreen() {
+    document.body.classList.add('locked');
+    document.getElementById('screen-lock').style.display = 'flex';
+  }
+  function unlockScreen() {
+    document.body.classList.remove('locked');
+    document.getElementById('screen-lock').style.display = 'none';
+    document.body.style.overflow = '';
+    document.documentElement.style.overflow = '';
+  }
+  lockScreen();
+
+  function getExpirationTime(type, value) {
+    const now = new Date();
+    if (type === "minute") now.setMinutes(now.getMinutes() + value);
+    else if (type === "day") now.setDate(now.getDate() + value);
+    return now.getTime();
+  }
+  const durationMap = {
+    minute: { type: "minute", value: 1 },
+    day: { type: "day", value: 1 },
+    "7days": { type: "day", value: 7 },
+    "30days": { type: "day", value: 30 }
+  };
+  let countdownInterval;
+  function startCountdown(expirationTime) {
+    clearInterval(countdownInterval);
+    const countdownElement = document.getElementById("countdown-timer");
+    countdownInterval = setInterval(function () {
+      const now = Date.now();
+      const distance = expirationTime - now;
+      const hours = Math.floor((distance % (1000*60*60*24)) / (1000*60*60));
+      const minutes = Math.floor((distance % (1000*60*60)) / (1000*60));
+      const seconds = Math.floor((distance % (1000*60)) / 1000);
+      countdownElement.textContent = `Time remaining: ${hours}h ${minutes}m ${seconds}s`;
+      if (distance < 0) {
+        clearInterval(countdownInterval);
+        countdownElement.textContent = "Expired! Please re-enter the code.";
+        lockScreen();
+        localStorage.removeItem("access_granted");
+        localStorage.removeItem("expiration_time");
+      }
+    }, 1000);
+  }
+  const savedAccess = localStorage.getItem("access_granted");
+  const savedExpire = localStorage.getItem("expiration_time");
+  if (savedAccess && savedExpire) {
+    const expirationTime = parseInt(savedExpire, 10);
+    if (Date.now() < expirationTime) {
+      unlockScreen();
+      window.scrollTo(0, 0);
+      startCountdown(expirationTime);
+      window.AppInventor?.setWebViewString("unlocked");
+    } else {
+      localStorage.removeItem("access_granted");
+      localStorage.removeItem("expiration_time");
+    }
+  }
+
+  function showMsg(type, text) {
+    const el = document.getElementById('msg');
+    el.className = '';
+    el.textContent = text || '';
+    if (!text) { el.style.display = 'none'; return; }
+    el.classList.add(type === 'success' ? 'success' : 'error');
+    const box = document.getElementById('lock-box');
+    box.classList.remove('shake');
+    void box.offsetWidth;
+    box.classList.add('shake');
+  }
+
+  document.getElementById("unlock-btn").addEventListener("click", function () {
+    const inputEl = document.getElementById("access-input");
+    const inputCode = inputEl.value.trim();
+    const selected = document.getElementById("duration-select").value;
+    if (!inputCode) {
+      showMsg('error', 'Please enter your access code.');
+      inputEl.focus();
+      return;
+    }
+    const url = "https://script.google.com/macros/s/AKfycbxpgnHFx25XGdA-8yfP_17e_GqcremB5qqBlWaJ0yIUxQb4mc6o01TYPFS8TKt8nWQ/exec?code=" 
+      + encodeURIComponent(inputCode) + "&type=" + encodeURIComponent(selected);
+    showMsg('', '');
+    fetch(url)
+      .then(r => r.text())
+      .then(result => {
+        if (result === "valid") {
+          const expirationTime = getExpirationTime(durationMap[selected].type, durationMap[selected].value);
+          localStorage.setItem("access_granted", "true");
+          localStorage.setItem("expiration_time", String(expirationTime));
+          unlockScreen();
+          window.scrollTo(0, 0);
+          startCountdown(expirationTime);
+          window.AppInventor?.setWebViewString("unlocked");
+        } else {
+          showMsg('error', 'Invalid access code.');
+          document.getElementById("access-input").focus();
+        }
+      })
+      .catch(err => {
+        showMsg('error', 'Error connecting to server. Please try again.');
+        console.error(err);
+      });
+  });
+</script>
